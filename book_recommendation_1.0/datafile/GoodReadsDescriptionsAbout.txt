@@ -1,0 +1,2 @@
+34472 nonempty descriptions retrieved from GoodReads API.
+There appear to be a lot of descriptions in languages other than English, though, so we should figure out what to do about that.

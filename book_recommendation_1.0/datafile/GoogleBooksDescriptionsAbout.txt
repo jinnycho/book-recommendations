@@ -1,0 +1,1 @@
+24246 nonempty descriptions retrieved from GoogleBooks API. They all seem to be in English.

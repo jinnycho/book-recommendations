@@ -1,0 +1,385 @@
+---
+title: "CB Evaluation"
+author: "Ryan Gorey"
+date: "February 16, 2017"
+output: html_document
+---
+
+```{r, include=FALSE}
+mypacks <- c("dplyr","ggplot2","tidyr","readr","stringr")  # what packages are needed?
+packs <- installed.packages()   # find installed package list
+install.me <- mypacks[!(mypacks %in% packs[,"Package"])]  #what needs to be installed?
+if (length(install.me) >= 1) install.packages(install.me, repos = "http://cran.us.r-project.org")   # install (if needed)
+lapply(mypacks, library, character.only=TRUE)  # load all packages
+```
+
+```{r BuildUserTrainingTable, include = FALSE}
+sentmaxVer1 <- read.csv("UserData/results_by_users_maxent_package_sentiment_2-14_10-56.csv")
+numTrainingRatingsByUser <- sentmaxVer1 %>%
+  select(user_id, total_training_ratings)
+```
+
+```{r loadExpandedResultsFunction, include = FALSE}
+getExpandedResults <- function(data) {
+data.1 <- data %>%
+  left_join(numTrainingRatingsByUser, by = c("user_id" = "user_id")) %>%
+  select(actual_rating_binary, correct, total_training_ratings) %>%
+  mutate(pred = ifelse(correct == 1, actual_rating_binary, ifelse(actual_rating_binary == 1, 0, 1))) %>%
+  select(-correct) %>%
+  mutate(truePositives = ifelse((pred == 1) & (actual_rating_binary == "1"), 1, 0)) %>%
+  mutate(falsePositives = ifelse((pred == 1) & (actual_rating_binary == "0"), 1, 0)) %>%
+  mutate(falseNegatives = ifelse((pred == 0) & (actual_rating_binary == "1"), 1, 0)) %>%
+  mutate(trueNegatives = ifelse((pred == 0) & (actual_rating_binary == "0"), 1, 0)) %>%
+  group_by(total_training_ratings) %>%
+  summarize(totalPredictions = n(), truePositives = sum(truePositives), falsePositives = sum(falsePositives), 
+            falseNegatives = sum(falseNegatives), trueNegatives = sum(trueNegatives)) %>%
+  mutate(accuracy = (truePositives + trueNegatives)/totalPredictions, precision = truePositives/(truePositives +   falsePositives), recall = truePositives/(truePositives + falseNegatives))
+
+  return(data.1)
+}
+```
+
+```{r loadSummaryResultsFunction, include = FALSE}
+getSummaryResults <- function(data.1) {
+data.2 <- data.1 %>%
+  ungroup() %>%
+  summarize(overallAccuracy = (sum(truePositives) + sum(trueNegatives))/sum(totalPredictions), overallPrecision = sum(truePositives)/(sum(truePositives) + sum(falsePositives)), overallRecall = sum(truePositives)/(sum(truePositives) + sum(falseNegatives)))
+  
+  return(data.2)
+}
+```
+
+# Results
+
+First we load our datasets:
+
+```{r}
+# Naive Bayes with TFIDF Vectors
+tb1 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_tfidf_2-07_15_37.csv")
+tb2 <-read.csv("RatingsFiles/results_by_ratings_naive_bayes_tfidf_2-13_18_53.csv")
+tb3 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_tfidf_2-17_21_04.csv")
+
+
+# Naive Bayes with Sentiment Vectors
+sb1 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_sentiment_2-08_16_08.csv")
+sb2 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_sentiment_2-17_21_04.csv")
+
+# Naive Bayes with Hybrid TFIDF/Sentiment Vectors
+hb1 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_both_2-17_21_04.csv")
+hb2 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_both_2-18_15_18.csv")
+hb3 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_indepboth_2-17_21_04.csv")
+hb4 <- read.csv("RatingsFiles/results_by_ratings_naive_bayes_indepboth_2-18_15_19.csv")
+
+# Max Ent. with TFIDF Vectors
+tm1 <- read.csv("RatingsFiles/results_by_ratings_maxent_package_tfidf_2-13_18_52.csv")
+tm2 <- read.csv("RatingsFiles/results_by_ratings_maxent_package_tfidf_2-14_10_55.csv")
+
+# Max Ent. with Sentiment Vectors (top performer)
+sm1 <- read.csv("RatingsFiles/results_by_ratings_maxent_package_sentiment_2-14_10-56.csv")
+
+# Max Ent. with Hybrid TFIDF/Sentiment Vectors
+hm1 <- read.csv("RatingsFiles/results_by_ratings_maxent_package_both_2-17_21_04.csv")
+hm2 <- read.csv("RatingsFiles/results_by_ratings_maxent_package_indepboth_2-17_21_04.csv")
+
+# Naive Bayes TFIDF 100 Features Unpaired Features
+tb4 <- read.csv("RatingsFiles/results_by_ratings_nb_tfidf_100feats_unpairedfeats_2-21_00-46.csv")
+
+# Naive Bayes Sentiment 100 Features Unpaired Features
+sb3 <- read.csv("RatingsFiles/results_by_ratings_nb_sentiment_100feats_unpairedfeats_2-21_00-46.csv")
+
+# Naive Bayes Both Independent 100 Features Upaired Features
+hb5 <- read.csv("RatingsFiles/results_by_ratings_nb_bothindep_100feats_unpairedfeats_2-21_00-48.csv")
+
+# Naive Bayes Both By TFIDF 100 Features Unpaired Features
+hb6 <- read.csv("RatingsFiles/results_by_ratings_nb_bothbytfidf_100feats_unpairedfeats_2-21_00-47.csv")
+
+# Max Ent TFIDF 100 Features Paired Features
+tm3 <- read.csv("RatingsFiles/results_by_ratings_maxent_tfidf_100feats_pairedfeats_2-21_20-20.csv")
+
+# Max Ent 100 Features Paired Features
+sm2 <- read.csv("RatingsFiles/results_by_ratings_maxent_sentiment_100feats_pairedfeats_2-21_20-20.csv")
+
+# Max Ent Both independent 100 features Paired Features
+hm3 <- read.csv("RatingsFiles/results_by_ratings_maxent_bothindep_100feats_pairedfeats_2-21_20-21.csv")
+
+# Max Ent Both By TFIDF 100 features Paired Features
+hm4 <- read.csv("RatingsFiles/results_by_ratings_maxent_bothbytfidf_100feats_pairedfeats_2-21_20-21.csv")
+```
+
+## Naive Bayes Classifiers ##
+
+### Naive Bayes Classifier with TFIDF Vectors (1):
+
+```{r}
+tb1.1 <- getExpandedResults(tb1)
+tb1.2 <- getSummaryResults(tb1.1)
+head(tb1.2)
+```
+
+We see an accuracy of `r tb1.2$overallAccuracy`, a precision of `r tb1.2$overallPrecision`, and a recall of `r tb1.2$overallRecall`. 
+
+### Naive Bayes Classifier with TFIDF Vectors (2):
+
+```{r}
+tb2.1 <- getExpandedResults(tb2)
+tb2.2 <- getSummaryResults(tb2.1)
+head(tb2.2)
+
+```
+
+We see an accuracy of `r tb2.2$overallAccuracy`, a precision of `r tb2.2$overallPrecision`, and a recall of `r tb2.2$overallRecall`. 
+
+### Naive Bayes Classifier with TFIDF Vectors (3):
+
+```{r}
+tb3.1 <- getExpandedResults(tb3)
+tb3.2 <- getSummaryResults(tb3.1)
+head(tb3.2)
+```
+
+We see an accuracy of `r tb3.2$overallAccuracy`, a precision of `r tb3.2$overallPrecision`, and a recall of `r tb3.2$overallRecall`. 
+
+
+### Naive Bayes TFIDF 100 Features Unpaired Features
+
+```{r}
+tb4.1 <- getExpandedResults(tb4)
+tb4.2 <- getSummaryResults(tb4.1)
+head(tb4.2)
+```
+
+We see an accuracy of `r tb4.2$overallAccuracy`, a precision of `r tb4.2$overallPrecision`, and a recall of `r tb4.2$overallRecall`. 
+
+### Naive Bayes Classifier with Sentiment Vectors (1):
+
+```{r}
+sb1.1 <- getExpandedResults(sb1)
+sb1.2 <- getSummaryResults(sb1.1)
+head(sb1.2)
+
+```
+
+We see an accuracy of `r sb1.2$overallAccuracy`, a precision of `r sb1.2$overallPrecision`, and a recall of `r sb1.2$overallRecall`. 
+
+### Naive Bayes Classifier with Sentiment Vectors (2):
+
+```{r}
+sb2.1 <- getExpandedResults(sb2)
+sb2.2 <- getSummaryResults(sb2.1)
+head(sb2.2)
+```
+
+We see an accuracy of `r sb2.2$overallAccuracy`, a precision of `r sb2.2$overallPrecision`, and a recall of `r sb2.2$overallRecall`. 
+
+# Naive Bayes Sentiment 100 Features Unpaired Features
+
+```{r}
+sb3.1 <- getExpandedResults(sb3)
+sb3.2 <- getSummaryResults(sb3.1)
+head(sb3.2)
+```
+
+We see an accuracy of `r sb3.2$overallAccuracy`, a precision of `r sb3.2$overallPrecision`, and a recall of `r sb3.2$overallRecall`. 
+
+
+sb3 <- read.csv("RatingsFiles/results_by_ratings_nb_sentiment_100feats_unpairedfeats_2-21_00-46.csv")
+
+
+### Naive Bayes Classifier with Hybrid TFIDF/Sentiment Vectors (1):
+
+```{r}
+hb1.1 <- getExpandedResults(hb1)
+hb1.2 <- getSummaryResults(hb1.1)
+head(hb1.2)
+```
+
+We see an accuracy of `r hb1.2$overallAccuracy`, a precision of `r hb1.2$overallPrecision`, and a recall of `r hb1.2$overallRecall`. 
+
+### Naive Bayes Classifier with Hybrid TFIDF/Sentiment Vectors (2):
+
+```{r}
+hb2.1 <- getExpandedResults(hb2)
+hb2.2 <- getSummaryResults(hb2.1)
+head(hb2.2)
+```
+
+We see an accuracy of `r hb2.2$overallAccuracy`, a precision of `r hb2.2$overallPrecision`, and a recall of `r hb2.2$overallRecall`. 
+
+### Naive Bayes Classifier with Hybrid TFIDF/Sentiment Vectors (3):
+
+```{r}
+hb3.1 <- getExpandedResults(hb3)
+hb3.2 <- getSummaryResults(hb3.1)
+head(hb3.2)
+```
+
+We see an accuracy of `r hb3.2$overallAccuracy`, a precision of `r hb3.2$overallPrecision`, and a recall of `r hb3.2$overallRecall`. 
+
+### Naive Bayes Classifier with Hybrid TFIDF/Sentiment Vectors (4):
+
+```{r}
+hb4.1 <- getExpandedResults(hb4)
+hb4.2 <- getSummaryResults(hb4.1)
+head(hb4.2)
+```
+
+We see an accuracy of `r hb4.2$overallAccuracy`, a precision of `r hb4.2$overallPrecision`, and a recall of `r hb4.2$overallRecall`. 
+
+### Naive Bayes Both Independent 100 Features Upaired Features
+
+```{r}
+hb5.1 <- getExpandedResults(hb5)
+hb5.2 <- getSummaryResults(hb5.1)
+head(hb5.2)
+```
+
+We see an accuracy of `r hb5.2$overallAccuracy`, a precision of `r hb5.2$overallPrecision`, and a recall of `r hb5.2$overallRecall`. 
+
+# Naive Bayes Both By TFIDF 100 Features Unpaired Features
+
+```{r}
+hb6.1 <- getExpandedResults(hb6)
+hb6.2 <- getSummaryResults(hb6.1)
+head(hb6.2)
+```
+
+We see an accuracy of `r hb6.2$overallAccuracy`, a precision of `r hb6.2$overallPrecision`, and a recall of `r hb6.2$overallRecall`. 
+
+### Naive Bayes Classifier Summary
+
+Most of the Naive Bayes Classifiers max out at about 80% accuracy.
+
+## Maximum Entropy Classifiers
+
+### Maximum Entropy with TFIDF Vectors (1):
+
+```{r}
+tm1.1 <- getExpandedResults(tm1)
+tm1.2 <- getSummaryResults(tm1.1)
+head(tm1.2)
+```
+
+We see an accuracy of `r tm1.2$overallAccuracy`, a precision of `r tm1.2$overallPrecision`, and a recall of `r tm1.2$overallRecall`. 
+
+### Maximum Entropy with TFIDF Vectors (2):
+
+```{r}
+tm2.1 <- getExpandedResults(tm2)
+tm2.2 <- getSummaryResults(tm2.1)
+head(tm2.2)
+```
+
+We see an accuracy of `r tm2.2$overallAccuracy`, a precision of `r tm2.2$overallPrecision`, and a recall of `r tm2.2$overallRecall`. 
+
+
+### Max Ent TFIDF 100 Features Paired Features (3):
+
+```{r}
+tm3.1 <- getExpandedResults(tm3)
+tm3.2 <- getSummaryResults(tm3.1)
+head(tm3.2)
+```
+
+We see an accuracy of `r tm3.2$overallAccuracy`, a precision of `r tm3.2$overallPrecision`, and a recall of `r tm3.2$overallRecall`. 
+
+###Maximum Entropy Classifier with Sentiment Vectors (1):
+
+```{r}
+sm1.1 <- getExpandedResults(sm1)
+sm1.2 <- getSummaryResults(sm1.1)
+head(sm1.2)
+```
+
+We see an accuracy of `r sm1.2$overallAccuracy`, a precision of `r sm1.2$overallPrecision`, and a recall of `r sm1.2$overallRecall`. 
+
+### Max Ent Sentiment 100 Features Paired Features (2):
+
+```{r}
+sm2.1 <- getExpandedResults(sm2)
+sm2.2 <- getSummaryResults(sm2.1)
+head(sm2.2)
+```
+
+We see an accuracy of `r sm2.2$overallAccuracy`, a precision of `r sm2.2$overallPrecision`, and a recall of `r sm2.2$overallRecall`. 
+
+
+### Maximum Entropy Classifier with Hybrid TFIDF/Sentiment Vectors (TFIDF selected features) (1):
+
+```{r}
+hm1.1 <- getExpandedResults(hm1)
+hm1.2 <- getSummaryResults(hm1.1)
+head(hm1.2)
+```
+
+We see an accuracy of `r hm1.2$overallAccuracy`, a precision of `r hm1.2$overallPrecision`, and a recall of `r hm1.2$overallRecall`. 
+
+### Maximum Entropy Classifier with Hybrid TFIDF/Sentiment Vectors (Independently selected features) (2):
+
+
+```{r}
+hm2.1 <- getExpandedResults(hm2)
+hm2.2 <- getSummaryResults(hm2.1)
+head(hm2.2)
+```
+
+We see an accuracy of `r hm2.2$overallAccuracy`, a precision of `r hm2.2$overallPrecision`, and a recall of `r hm2.2$overallRecall`. 
+
+
+### Max Ent Both independent 100 features Paired Features (3):
+
+```{r}
+hm3.1 <- getExpandedResults(hm3)
+hm3.2 <- getSummaryResults(hm3.1)
+head(hm3.2)
+```
+
+We see an accuracy of `r hm3.2$overallAccuracy`, a precision of `r hm3.2$overallPrecision`, and a recall of `r hm3.2$overallRecall`. 
+
+# Max Ent Both By TFIDF 100 features Paired Features (4):
+hm4 <- read.csv("RatingsFiles/results_by_ratings_maxent_bothbytfidf_100feats_pairedfeats_2-21_20-21.csv")
+
+
+```{r}
+hm4.1 <- getExpandedResults(hm4)
+hm4.2 <- getSummaryResults(hm4.1)
+head(hm4.2)
+```
+
+We see an accuracy of `r hm4.2$overallAccuracy`, a precision of `r hm4.2$overallPrecision`, and a recall of `r hm4.2$overallRecall`. 
+
+# Conclusions
+
+The top performer is maximum entropy classifer using features determined by the most influential TFIDF scores of different words, and their associated sentiment scores whenever available. We see an accuracy of `r hm2.2$overallAccuracy`, a precision of `r hm2.2$overallPrecision`, and a recall of `r hm2.2$overallRecall`. 
+
+# Building a Model for our Top Classifer
+
+```{r}
+model <- lm(hm1.1$accuracy ~ log(hm1.1$total_training_ratings))
+summary(model)
+
+plot(hm1.1$accuracy ~ log(hm1.1$total_training_ratings))
+```
+
+Given the shape of our data, there is not a meaningful model to apply. Therefore we will use the same weight regardless of the number of ratings in training.
+
+# Evaluating a Hybrid Model
+
+```{r}
+hybrid1 <- read.csv("hybrid_results_2-20_20-08.csv")
+
+hybrid1.1 <- hybrid %>%
+  mutate(probGood = (cf_prob_good/100) * 0.5 + cb_prob_good * 0.5) %>%
+  mutate(pred = ifelse(probGood > 0.5, 1, 0)) %>%
+  mutate(actual_rating_binary = ifelse(actual_rating_nb > 2.5, 1, 0)) %>%
+  select(-c(num_good_training_books)) %>%
+  mutate(truePositives = ifelse((pred == 1) & (actual_rating_binary == "1"), 1, 0)) %>%
+  mutate(falsePositives = ifelse((pred == 1) & (actual_rating_binary == "0"), 1, 0)) %>%
+  mutate(falseNegatives = ifelse((pred == 0) & (actual_rating_binary == "1"), 1, 0)) %>%
+  mutate(trueNegatives = ifelse((pred == 0) & (actual_rating_binary == "0"), 1, 0)) %>%
+  summarize(totalPredictions = n(), truePositives = sum(truePositives), falsePositives = sum(falsePositives), 
+            falseNegatives = sum(falseNegatives), trueNegatives = sum(trueNegatives)) %>%
+  mutate(accuracy = (truePositives + trueNegatives)/totalPredictions, precision = truePositives/(truePositives +   falsePositives), recall = truePositives/(truePositives + falseNegatives)) %>%
+  select(accuracy, precision, recall)
+
+head(hybrid1.1)
+```

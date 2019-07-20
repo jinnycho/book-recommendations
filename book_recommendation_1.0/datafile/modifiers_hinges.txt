@@ -1,0 +1,54 @@
+MODIFIERS: (*** = doesn't flip sentiment, just modifies magnitude)
+ain't
+are not
+aren't
+cannot
+cant
+can't
+could not
+couldn't
+did not
+didn't
+does not
+doesn't
+do not
+don't
+especially***
+far from
+had not
+hadn't
+has not
+hasn't
+have not
+haven't
+is not
+isn't
+least (NOT at least)
+less
+neither
+never
+nor
+not
+particularly***
+quite***
+rather*** (NOT rather than)
+shan't
+slightly***
+somewhat***
+thoroughly***
+truly***
+very***
+was not
+wasn't
+were not
+weren't
+will not
+won't
+
+HINGES:
+actually (at beginning of sentence)
+although (only consider ones that come in the middle of the sentence)
+but (NOT but also) (also careful with "not only" somewhere before)
+despite (only consider if it's in the middle of the sentence)
+however
+instead (NOT instead of)

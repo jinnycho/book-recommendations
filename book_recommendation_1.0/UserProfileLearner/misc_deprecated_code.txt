@@ -1,0 +1,171 @@
+From user_profile_learner.py:
+
+    def main():
+        # this was the old, test main while the classifiers were still being developed
+        isbns_to_user_ratings = get_dict_of_user_ratings("UserRatings.txt")
+        isbns_to_vectors = get_modeled_book_dict("BookVectors.txt", isbns_to_user_ratings.keys())
+
+        ratings_to_vector_lists = {}
+        for i in range(1, RATINGS_OUT_OF + 1):
+            ratings_to_vector_lists[i] = []
+        rated_isbns = isbns_to_user_ratings.keys()
+        for isbn in rated_isbns:
+            if isbns_to_user_ratings[isbn] in ratings_to_vector_lists:
+                ratings_to_vector_lists[isbns_to_user_ratings[isbn]].append(isbns_to_vectors[isbn])
+            else:
+                ratings_to_vector_lists[isbns_to_user_ratings[isbn]] = []
+        ratings_to_vector_lists = binarify_ratings_with_max_bad_rating(MAX_BAD_RATING,
+                                                                       ratings_to_vector_lists)
+
+        print("Starting Naive Bayes classifier:")
+        nb_upl = UserProfileLearner(True)
+        nb_upl.train(ratings_to_vector_lists)
+        log_probs = nb_upl.predict_rating([1, 2, 4, 3])
+        print("Log probs for bad and good: \t" + str(log_probs))
+        probs, unused_info = unlog_log_probs(log_probs, True)
+        print("Normalized non-log probs: \t\t" + str(probs))
+
+        print("\nStarting Maximum Entropy classifier:")
+        maxent_upl = UserProfileLearner(False)
+        maxent_upl.train(ratings_to_vector_lists)
+        log_probs = maxent_upl.predict_rating([1, 2, 4, 3])
+        print("Log probs for bad and good: \t" + str(log_probs))
+        probs, unused_info = unlog_log_probs(log_probs, True)
+        print("Normalized non-log probs: \t\t" + str(probs))
+
+From max_ent_weight_trainer.py:
+
+    def num_identical_books_in_list(self, book, list_of_books):
+        """
+        This was used in another earlier interpretation of emp_p(x, y) and emp_p(x),
+        but it turns out it actually produces better results if I just use 1/N for
+        both instead of counting two books with identical feature vectors as the same.
+        :param book: the book feature vector we want matches for
+        :param list_of_books: a list of book feat. vectors we want to look for matches in
+        :return: the number of matches found
+        num_identical = 0
+        for other_book in list_of_books:
+            mismatch_found = False
+            for feat_index in range(len(book)):
+                book_feat = book[feat_index]
+                other_book_feat = other_book[feat_index]
+                if book_feat["feat"] != other_book_feat["feat"]:
+                    mismatch_found = True
+                    break
+            if not mismatch_found:
+                num_identical += 1
+        return num_identical
+
+    def put_together_empirical_conditional_probability_table_books_binary(self):
+        """
+        This was my earlier interpretation of the emp_p(x, y) given in the formula for the
+        partial derivative of B with respect to little-delta_i in Berger's paper.
+        However, I was interpreting this as emp_p(x | y), which is something else entirely,
+        *and* I was making this much more complicated than it needed to be by trying to construct
+        the empirical probability of a book from the empirical probabilities of its component
+        word feature counts.
+        This has since been replaced by fill_out_empirical_prob_tables().
+        :return: None (updates self.scaled_emp_p_book_given_rating)
+        """
+        num_bad_features = len(self.training_features[0]) // 2
+        for book in self.training_features:
+            log_prob_of_book_given_rating = 0
+            for i in range(len(self.emp_p_word_given_rating) // 2):
+                if book[0]["rating"] == 0:
+                    # use i as index
+                    prob_if_feat_1 = self.emp_p_word_given_rating[i]
+                    if book[i]["feat"] == 1:
+                        log_prob_of_book_given_rating += log(prob_if_feat_1)
+                    else:
+                        log_prob_of_book_given_rating += log(1 - prob_if_feat_1)
+                else:
+                    # use i + num_bad_features as index
+                    prob_if_feat_1 = self.emp_p_word_given_rating[i + num_bad_features]
+                    if book[i]["feat"] == 1:
+                        log_prob_of_book_given_rating += log(prob_if_feat_1)
+                    else:
+                        log_prob_of_book_given_rating += log(1 - prob_if_feat_1)
+            self.scaled_emp_p_book_given_rating.append(log_prob_of_book_given_rating)
+
+    def put_together_empirical_feature_probability_table_books_binary(self):
+        """
+        This was my earlier interpretation of the emp_p(x) given in the formula for the
+        partial derivative of B with respect to little-delta_i in Berger's paper.
+        The way I went about constructing emp_p(x), though, was way more complicated than
+        it needed to be; I tried to construct emp_p(x | y) from the empirical probabilities
+        of the component word counts in each book, then calculate emp_p(x) as
+        prob(book | good rating) + prob(book | bad rating).
+        This has since been replaced by fill_out_empirical_prob_tables().
+        :return: None (fills out class variables)
+        """
+        # prob(book | good rating) + prob(book | bad rating)
+        # first, calculate the missing one of those two probabilities for each book
+        num_bad_features = len(self.training_features[0]) // 2
+        for book in self.training_features:
+            log_prob_of_book_given_rating = 0
+            for i in range(len(self.emp_p_word_given_rating) // 2):
+                if book[0]["rating"] == 1:
+                    # use i as index
+                    prob_if_feat_1 = self.emp_p_word_given_rating[i]
+                    if book[i]["feat"] == 1:
+                        log_prob_of_book_given_rating += log(prob_if_feat_1)
+                    else:
+                        log_prob_of_book_given_rating += log(1 - prob_if_feat_1)
+                else:
+                    # use i + num_bad_features as index
+                    prob_if_feat_1 = self.emp_p_word_given_rating[i + num_bad_features]
+                    if book[i]["feat"] == 1:
+                        log_prob_of_book_given_rating += log(prob_if_feat_1)
+                    else:
+                        log_prob_of_book_given_rating += log(1 - prob_if_feat_1)
+            self.scaled_emp_p_book.append(log_prob_of_book_given_rating)
+        for i in range(len(self.scaled_emp_p_book)):
+            shift_up_by = fabs(self.scaled_emp_p_book[i] - self.scaled_emp_p_book_given_rating[i]) \
+                          // 2
+            one_log_prob = self.scaled_emp_p_book[i] + shift_up_by
+            other_log_prob = self.scaled_emp_p_book_given_rating[i] + shift_up_by
+            unlogged_shifted_prob = pow(e, one_log_prob) + pow(e, other_log_prob)
+            unshifted_log_prob = log(unlogged_shifted_prob) - shift_up_by
+            self.scaled_emp_p_book[i] = unshifted_log_prob
+
+    def unlog_probs(self):
+        """
+        Helper function for put_together_empirical_feature_probability_table_books_binary()
+        :return: None (just updates some class variables)
+        """
+        ls, denom = unlog_log_probs(self.emp_p_book_rating + \
+                                    self.emp_p_book, False)
+        self.emp_p_book_rating = ls[0:len(self.emp_p_book_rating)]
+        self.emp_p_book = ls[len(self.emp_p_book_rating):]
+        self.power_e_to_mult_by = denom
+        if len(self.emp_p_book) == 0:
+            self.power_e_to_mult_by = 0
+
+    def put_together_empirical_conditional_probability_table_words_binary(self):
+        # deprecated
+        num_bad_features = len(self.training_features[0]) // 2
+        for bad_or_good in range(2):
+            for feature in range(num_bad_features):
+                # go through all books with this rating and average the values for this feature
+                feat_sum = 0
+                num_books_factored_in = 0
+                for book in self.training_features:
+                    if book[feature]["rating"] == book[feature]["feat_type"]:
+                        feat_sum += book[feature]["feat"]
+                        num_books_factored_in += 1
+                avg = feat_sum / num_books_factored_in
+                if avg == 0:
+                    avg = .0001
+                self.emp_p_word_given_rating.append(avg)
+
+    def put_together_empirical_conditional_probability_table_words_nonbinary(self):
+        # Realized this wasn't necessary before coding it
+        pass
+
+    def put_together_empirical_conditional_probability_table_books_nonbinary(self):
+        # Realized this wasn't necessary before coding it
+        pass
+
+    def put_together_empirical_feature_probability_table_books_nonbinary(self):
+        # Realized this wasn't necessary before coding it
+        pass
