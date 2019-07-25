@@ -13,8 +13,6 @@ import org.apache.spark.sql.functions._
 
 object BookRec {
 
-  def loadBookNames
-
   /*
    * @param {list} args - the list of ISBNs you read
    */
