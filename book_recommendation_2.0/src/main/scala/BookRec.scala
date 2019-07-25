@@ -24,7 +24,10 @@ object BookRec {
     val data = sc.textFile("../data/sample.csv")
 
     // Map ratings to userID => ISBN, rating
-    val ratings = data.map(l => l.split(",")).map(l => (l(0).toInt, (l(2).toInt, l(3).toDouble)))
+    val ratings = data.map(l => l.split(",")).map(l => (l(0), (l(2).toInt, l(3).toDouble)))
 
+    // join by the same user
+    // will create RDD of userID => ((ISBN, rating), (ISBN, rating))
+    val joinedRatings = ratings.join(ratings)
   }
 }
