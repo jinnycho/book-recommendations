@@ -13,4 +13,20 @@ import org.apache.spark.sql.functions._
 
 object BookRec {
 
+  def loadBookNames
+
+  /*
+   * @param {list} args - the list of ISBNs you read
+   */
+  def main(args: Array[String]) {
+    Logger.getLogger("org").setLevel(Level.ERROR)
+
+    val sc = new SparkContext("local[*]", "MovieSimilarities")
+
+    val data = sc.textFile("../data/sample.csv")
+
+    // Map ratings to userID => ISBN, rating
+    val ratings = data.map(l => l.split(",")).map(l => (l(0).toInt, (l(2).toInt, l(3).toDouble)))
+
+  }
 }
