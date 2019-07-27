@@ -13,25 +13,7 @@ import org.apache.spark.sql.functions._
 
 object BookRec {
 
-  type BookRating = (Int, Double)
-  type UserRatingPair = (String, (BookRating, BookRating))
-  def filterDuplicates(userRatings:UserRatingPair):Boolean = {
-    val bookRating1 = userRatings._2._1
-    val bookRating2 = userRatings._2._2
-    val bookISBN1 = bookRating1._1
-    val bookISBN2 = bookRating2._1
-    return (bookISBN1 == bookISBN2) && (bookRating1 == bookRating2)
-  }
-
-  def makePairs(userRatings:UserRatingPair) = {
-    val bookRating1 = userRatings._2._1
-    val bookRating2 = userRatings._2._2
-    val book1 = bookRating1._1
-    val rating1 = bookRating1._2
-    val book2 = bookRating2._1
-    val rating2 = bookRating2._2
-
-    ((book1, book2), (rating1, rating2))
+  def computeCosineSim(userInfoDF: DataFrame) = {
   }
 
   /*
@@ -65,10 +47,12 @@ object BookRec {
     val joinedRatingsDF = ratingsDF.groupBy("userID").agg(collect_list("rating").as("rating"))
 
     // Create DF (userID) => (movie1, movie2...), (rating1, rating2...)
-    val UserInfoJoinedDF = joinedISBNDF
+    val userInfoJoinedDF = joinedISBNDF
       .join(joinedRatingsDF, joinedISBNDF("userID") === joinedRatingsDF("userID"), "left_outer")
       .select(joinedISBNDF("userID"), joinedISBNDF("ISBN"), joinedRatingsDF("rating"))
 
+    // Compute similarities
+    val moviePairSims = computeCosineSim(userInfoJoinedDF)
     spark.stop()
   }
 }
