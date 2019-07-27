@@ -59,13 +59,16 @@ object BookRec {
       .schema(customSchema)
       .load("./data/sample.csv")
 
-    // Map ratings to userID => (movie1, movie2)
-    // userID => (rating1, rating2)
+    // Map ratings to userID => (movie1, movie2,...)
+    // userID => (rating1, rating2,...)
     val joinedISBNDF = ratingsDF.groupBy("userID").agg(collect_list("ISBN").as("ISBN"))
     val joinedRatingsDF = ratingsDF.groupBy("userID").agg(collect_list("rating").as("rating"))
-    joinedISBNDF.show()
-    joinedRatingsDF.show()
 
+    // Create DF that is (userID) => (movie1, movie2...), (rating1, rating2...)
+    val finalJoinedDF = joinedISBNDF
+      .join(joinedRatingsDF, joinedISBNDF("userID") === joinedRatingsDF("userID"), "left_outer")
+      .select(joinedISBNDF("userID"), joinedISBNDF("ISBN"), joinedRatingsDF("rating"))
+    finalJoinedDF.show()
     spark.stop()
   }
 }
