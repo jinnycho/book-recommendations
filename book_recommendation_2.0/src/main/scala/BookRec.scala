@@ -41,17 +41,19 @@ object BookRec {
       .schema(customSchema)
       .load("./data/sample.csv")
 
-    // Map ratings to userID => (movie1, movie2,...)
-    // userID => (rating1, rating2,...)
+    // Map data to (userID), (movie1, movie2,...)
     val joinedISBNDF = ratingsDF.groupBy("userID").agg(collect_list("ISBN").as("ISBN"))
+    // (userID), (rating1, rating2,...)
     val joinedRatingsDF = ratingsDF.groupBy("userID").agg(collect_list("rating").as("rating"))
 
-    // Create DF (userID) => (movie1, movie2...), (rating1, rating2...)
+    // Create DF (userID), (movie1, movie2...), (rating1, rating2...)
     val userInfoJoinedDF = joinedISBNDF
       .join(joinedRatingsDF, joinedISBNDF("userID") === joinedRatingsDF("userID"), "left_outer")
       .select(joinedISBNDF("userID"), joinedISBNDF("ISBN"), joinedRatingsDF("rating"))
 
     // Compute similarities
+    // returns a new dataframe:
+    // (userID1), (userID2), (movie1, movie2...), (rating1, rating2), (sim)
     val moviePairSims = computeCosineSim(userInfoJoinedDF)
     spark.stop()
   }
