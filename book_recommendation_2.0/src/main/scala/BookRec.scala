@@ -64,11 +64,11 @@ object BookRec {
     val joinedISBNDF = ratingsDF.groupBy("userID").agg(collect_list("ISBN").as("ISBN"))
     val joinedRatingsDF = ratingsDF.groupBy("userID").agg(collect_list("rating").as("rating"))
 
-    // Create DF that is (userID) => (movie1, movie2...), (rating1, rating2...)
-    val finalJoinedDF = joinedISBNDF
+    // Create DF (userID) => (movie1, movie2...), (rating1, rating2...)
+    val UserInfoJoinedDF = joinedISBNDF
       .join(joinedRatingsDF, joinedISBNDF("userID") === joinedRatingsDF("userID"), "left_outer")
       .select(joinedISBNDF("userID"), joinedISBNDF("ISBN"), joinedRatingsDF("rating"))
-    finalJoinedDF.show()
+
     spark.stop()
   }
 }
