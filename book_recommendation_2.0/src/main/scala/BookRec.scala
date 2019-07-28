@@ -12,10 +12,12 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
 
 import org.apache.spark.ml.feature.{HashingTF, IDF}
+import org.apache.spark.ml.feature.Normalizer
 
 object BookRec {
 
   def computeCosineSim(userInfoDF: DataFrame) = {
+    // Compute TF-IDF
     val hashingTF = new HashingTF()
       .setInputCol("rating")
       .setOutputCol("rawFeatures")
@@ -25,7 +27,13 @@ object BookRec {
       .setOutputCol("features")
     val idfModel = idf.fit(tf)
     val rescaledData = idfModel.transform(tf)
-    rescaledData.show()
+    // Compute L2 norm
+    val normalizer = new Normalizer()
+      .setInputCol("features")
+      .setOutputCol("normFeatures")
+      .setP(1.0)
+    val l1NormData = normalizer.transform(rescaledData)
+    l1NormData.show()
   }
 
   /*
