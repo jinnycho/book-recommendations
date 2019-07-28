@@ -10,7 +10,7 @@ import scala.math.sqrt
 
 object BookRec {
 
-  type BookRating = (Int, Double)
+  type BookRating = (String, Double)
   type UserRatingPair = (String, (BookRating, BookRating))
   def filterDuplicates(userRatings:UserRatingPair):Boolean = {
     val bookRating1 = userRatings._2._1
@@ -67,9 +67,9 @@ object BookRec {
 
     val sc = new SparkContext("local[*]", "BookSimilarities")
 
-    val data = sc.textFile("./data/sample.csv")
+    val data = sc.textFile("./data/AmazonSorted.csv")
     // userID => ISBN, rating
-    val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2).toInt, l(3).toDouble)))
+    val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2), l(3).toDouble)))
     // Find every pair of books that were read by the same person
     val joinedRatings = ratings.join(ratings)
     // Filter out duplicate pairs
