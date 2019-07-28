@@ -10,7 +10,7 @@ import scala.math.sqrt
 
 object BookRec {
 
-  type BookRating = (String, Double)
+  type BookRating = (Int, Double)
   type UserRatingPair = (String, (BookRating, BookRating))
   def filterDuplicates(userRatings:UserRatingPair):Boolean = {
     val bookRating1 = userRatings._2._1
@@ -69,7 +69,7 @@ object BookRec {
 
     val data = sc.textFile("./data/sample.csv")
     // userID => ISBN, rating
-    val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2), l(3).toDouble)))
+    val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2).toInt, l(3).toDouble)))
     // Find every pair of books that were read by the same person
     val joinedRatings = ratings.join(ratings)
     // Filter out duplicate pairs
@@ -82,5 +82,32 @@ object BookRec {
 
     // compute similarities
     val bookPairSims = bookPairRatings.mapValues(computeCosineSim).cache()
+
+    if (args.length > 0) {
+      val simThreshold = 0.98
+      val occurenceThreshold = 50.0
+      val bookID:Int = args(0).toInt
+
+      val filteredResults = bookPairSims.filter(x => {
+        val bookPair = x._1
+        val sim = x._2
+        (bookPair._1 == bookID || bookPair._2 == bookID) && sim._1 > simThreshold && sim._2 > occurenceThreshold
+      })
+
+      // sort by quality score
+      val results = filteredResults
+        .map(x => (x._2, x._1))
+        .sortByKey(false)
+        .take(10)
+      for (result <- results) {
+        val sim = result._1
+        val bookPair = result._2
+        var similarBookID = bookPair._1
+        if (similarBookID == bookID) {
+          similarBookID = bookPair._2
+        }
+        println("Recommends: " + similarBookID + "\tscore: " + sim._1 + "\tstrength: " + sim._2)
+      }
+    }
   }
 }
