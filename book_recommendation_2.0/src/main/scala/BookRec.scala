@@ -11,9 +11,21 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
 
+import org.apache.spark.ml.feature.{HashingTF, IDF}
+
 object BookRec {
 
   def computeCosineSim(userInfoDF: DataFrame) = {
+    val hashingTF = new HashingTF()
+      .setInputCol("rating")
+      .setOutputCol("rawFeatures")
+    val tf = hashingTF.transform(userInfoDF)
+    val idf = new IDF()
+      .setInputCol("rawFeatures")
+      .setOutputCol("features")
+    val idfModel = idf.fit(tf)
+    val rescaledData = idfModel.transform(tf)
+    rescaledData.show()
   }
 
   /*
