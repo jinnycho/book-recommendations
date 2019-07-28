@@ -22,6 +22,8 @@ object BookRec {
     val sc = new SparkContext("local[*]", "BookSimilarities")
 
     val data = sc.textFile("./data/sample.csv")
-
+    // userID => ISBN, rating
+    val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2), l(3).toDouble)))
+    ratings.collect().foreach(println)
   }
 }
