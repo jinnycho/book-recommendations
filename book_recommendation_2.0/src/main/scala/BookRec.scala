@@ -7,9 +7,6 @@ import scala.io.Source
 import java.nio.charset.CodingErrorAction
 import scala.io.Codec
 import scala.math.sqrt
-import org.apache.spark.sql._
-import org.apache.spark.sql.types._
-import org.apache.spark.sql.functions._
 
 object BookRec {
 
@@ -22,6 +19,44 @@ object BookRec {
     val book1 = bookRating1._1
     val book2 = bookRating2._1
     return book1 != book2
+  }
+
+  def makePairs(userRatings:UserRatingPair) = {
+    val bookRating1 = userRatings._2._1
+    val bookRating2 = userRatings._2._2
+
+    val book1 = bookRating1._1
+    val rating1 = bookRating1._2
+    val book2 = bookRating2._1
+    val rating2 = bookRating2._2
+
+    ((book1, book2), (rating1, rating2))
+  }
+
+  type RatingPair = (Double, Double)
+  type RatingPairs = Iterable[RatingPair]
+  def computeCosineSim(ratingPairs:RatingPairs): (Double, Int) = {
+    var numPairs:Int = 0
+    var sum_11:Double = 0.0
+    var sum_22:Double = 0.0
+    var sum_12:Double = 0.0
+
+    for (pair <- ratingPairs) {
+      val rating1 = pair._1
+      val rating2 = pair._2
+      sum_11 += rating1 * rating1
+      sum_22 += rating2 * rating2
+      sum_12 += rating1 * rating2
+      numPairs += 1
+    }
+
+    val numerator:Double = sum_12
+    val denominator = sqrt(sum_11) * sqrt(sum_22)
+    var score:Double = 0.0
+    if (denominator != 0) {
+      score = numerator/denominator
+    }
+    return (score, numPairs)
   }
 
   /*
@@ -39,5 +74,13 @@ object BookRec {
     val joinedRatings = ratings.join(ratings)
     // Filter out duplicate pairs
     val uniqueJoinedRatings = joinedRatings.filter(filterDuplicates)
+    // make the book pairs the key
+    val bookPairs = uniqueJoinedRatings.map(makePairs)
+    // Collect all ratings for each book pair
+    // (movie1, movie2) => (rating1, rating2), (rating1, rating2)...
+    val bookPairRatings = bookPairs.groupByKey()
+
+    // compute similarities
+    val bookPairSims = bookPairRatings.mapValues(computeCosineSim).cache()
   }
 }
