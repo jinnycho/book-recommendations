@@ -85,7 +85,7 @@ object BookRec {
 
     if (args.length > 0) {
       val simThreshold = 0.98
-      val occurenceThreshold = 50.0
+      val occurenceThreshold = 30.0
       val bookID:Int = args(0).toInt
 
       val filteredResults = bookPairSims.filter(x => {
@@ -99,6 +99,7 @@ object BookRec {
         .map(x => (x._2, x._1))
         .sortByKey(false)
         .take(10)
+
       for (result <- results) {
         val sim = result._1
         val bookPair = result._2
@@ -106,6 +107,8 @@ object BookRec {
         if (similarBookID == bookID) {
           similarBookID = bookPair._2
         }
+        //TODO remove redundant recommendations
+        //TODO use API to return the actual book name
         println("Recommends: " + similarBookID + "\tscore: " + sim._1 + "\tstrength: " + sim._2)
       }
     }
