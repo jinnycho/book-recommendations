@@ -13,4 +13,15 @@ import org.apache.spark.sql.functions._
 
 object BookRec {
 
+  /*
+   * @param {list} args - the list of ISBNs you read
+   */
+  def main(args: Array[String]) {
+    Logger.getLogger("org").setLevel(Level.ERROR)
+
+    val sc = new SparkContext("local[*]", "BookSimilarities")
+
+    val data = sc.textFile("./data/sample.csv")
+
+  }
 }
