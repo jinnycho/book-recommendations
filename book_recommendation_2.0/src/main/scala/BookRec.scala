@@ -67,7 +67,7 @@ object BookRec {
 
     val sc = new SparkContext("local[*]", "BookSimilarities")
 
-    val data = sc.textFile("./data/AmazonSorted.csv")
+    val data = sc.textFile("./data/sample.csv")
     // userID => ISBN, rating
     val ratings = data.map(l => l.split(",")).map(l => (l(1), (l(2), l(3).toDouble)))
     // Find every pair of books that were read by the same person
@@ -84,9 +84,9 @@ object BookRec {
     val bookPairSims = bookPairRatings.mapValues(computeCosineSim).cache()
 
     if (args.length > 0) {
-      val simThreshold = 0.98
-      val occurenceThreshold = 30.0
-      val bookID:Int = args(0).toInt
+      val simThreshold = 0.9
+      val occurenceThreshold = 0.0
+      val bookID:String = args(0)
 
       val filteredResults = bookPairSims.filter(x => {
         val bookPair = x._1
